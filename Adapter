@@ -1,0 +1,117 @@
+package com.random.udial;
+
+import android.annotation.SuppressLint;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
+
+import java.util.Collections;
+
+public class Urgent_AllNotes_Adapter extends RecyclerView.Adapter<Urgent_AllNotes_Adapter.ViewHolder> {
+
+    private Context context;
+    private Cursor cursor;
+
+    StarHelperClass starHelperClass;
+    SQLiteDatabase db;
+
+    public Urgent_AllNotes_Adapter (Context context, Cursor cursor) {
+        this.context = context;
+        this.cursor = cursor;
+    }
+
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.single_all_notes_view, parent, false);
+
+        return new ViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull Urgent_AllNotes_Adapter.ViewHolder holder, int position) {
+        if (!cursor.moveToPosition(position)) {
+            return;
+        }
+        holder.urgentNames.setText(cursor.getString(cursor.getColumnIndex(Identifiers.Collection.COLUMN_URGENT_NAME)));
+        holder.urgentNumbers.setText(cursor.getString(cursor.getColumnIndex(Identifiers.Collection.COLUMN_URGENT_NUMBER)));
+
+        holder.star.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                starHelperClass = new StarHelperClass(context);
+                db = starHelperClass.getWritableDatabase();
+
+                Cursor starCursor = db.rawQuery("SELECT * FROM " + StarIdentifiers.Collections.STAR_TABLE_NAME, null);
+
+                if (starCursor.getCount() != 0) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(StarIdentifiers.Collections.STAR_URGENT_NAME_COL, holder.urgentNames.getText().toString());
+                    cv.put(StarIdentifiers.Collections.STAR_URGENT_NUM_COL, holder.urgentNumbers.getText().toString());
+                    Log.d("cvDebug", "cv Added");
+
+                    db.update(StarIdentifiers.Collections.STAR_TABLE_NAME, cv, StarIdentifiers.Collections._ID + "=?", new String[]{String.valueOf(1)});
+
+                    starCursor.moveToFirst();
+                    
+                    
+                    // color changing to red but getting changed to default on reopening of activity.. 
+                    holder.star.setBackgroundResource(R.color.red);
+                    
+                    
+                    Toast.makeText(context, "Star Number Updated Successfully", Toast.LENGTH_SHORT).show();
+                    starCursor.close();
+                }
+            }
+        });
+
+        final Long id = cursor.getLong(cursor.getColumnIndex(Identifiers.Collection._ID));
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(context, UrgentInfoActivity.class);
+                intent.putExtra("uName", holder.urgentNames.getText().toString());
+                intent.putExtra("uNumber", holder.urgentNumbers.getText().toString());
+                intent.putExtra("id", String.valueOf(id));
+
+                context.startActivity(intent);
+            }
+        });
+    }
+
+    @Override
+    public int getItemCount() {
+        return cursor.getCount();
+    }
+
+    public class ViewHolder extends RecyclerView.ViewHolder {
+        private TextView urgentNames;
+        private TextView urgentNumbers;
+        private TextView star;
+        public ViewHolder(@NonNull View itemView) {
+            super(itemView);
+            urgentNames = itemView.findViewById(R.id.urgentName_tv);
+            urgentNumbers = itemView.findViewById(R.id.urgentNum_tv);
+            star = itemView.findViewById(R.id.starTextBtn);
+        }
+    }
+
+}
